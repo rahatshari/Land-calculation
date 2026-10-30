@@ -1,0 +1,6 @@
+{
+  "name": "উত্তরাধিকার ও জমির হিসেব বৃক্ষ (Uttoradhikar Tree)",
+  "description": "বাংলাদেশ মুসলিম পারিবারিক আইন মোতাবেক বংশপরম্পরায় জমির উত্তরাধিকার বণ্টন, ইন্টারেক্টিভ বংশবৃক্ষ ও পাসওয়ার্ড সুরক্ষিত ফারায়েজ রিপোর্ট।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
