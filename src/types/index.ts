@@ -12,11 +12,32 @@ export type RelationshipType =
   | 'paternal_grandmother'
   | 'maternal_grandmother'
   | 'brother'
-  | 'sister';
+  | 'sister'
+  | 'consanguine_brother'
+  | 'consanguine_sister'
+  | 'uterine_brother'
+  | 'uterine_sister'
+  | 'son_son'
+  | 'son_daughter'
+  | 'nephew'
+  | 'consanguine_nephew'
+  | 'paternal_uncle'
+  | 'paternal_cousin';
 
 export interface Fraction {
   num: number;
   den: number;
+}
+
+export interface LandTransaction {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  buyerId: string;
+  buyerName: string;
+  amountDecimals: number; // হস্তান্তরিত জমির পরিমাণ শতক / শতাংশ
+  date: string;
+  note?: string;
 }
 
 export interface HeirCountInput {
@@ -26,10 +47,21 @@ export interface HeirCountInput {
   daughters: number;
   father: boolean;
   mother: boolean;
-  grandfather: boolean;
-  grandmother: boolean;
-  brothers: number;
-  sisters: number;
+  grandfather: boolean; // দাদা
+  grandmother: boolean; // দাদী / নানী
+  paternalGrandmother?: boolean;
+  maternalGrandmother?: boolean;
+  brothers: number; // সহোদর ভাই
+  sisters: number; // সহোদর বোন
+  consanguineBrothers?: number; // বৈমাত্রেয় ভাই
+  consanguineSisters?: number; // বৈমাত্রেয় বোন
+  uterineBrothers?: number; // বৈপিত্রীয় ভাই
+  uterineSisters?: number; // বৈপিত্রীয় বোন
+  sonSons?: number; // পৌত্র
+  sonDaughters?: number; // পৌত্রী
+  nephews?: number; // সহোদর ভাইয়ের ছেলে (ভাতিজা)
+  paternalUncles?: number; // আপন চাচা
+  paternalCousins?: number; // চাচাতো ভাই
 }
 
 export interface IndividualHeirConfig {
@@ -67,9 +99,12 @@ export interface HeirTreeNode {
   relationship: RelationshipType;
   relationshipBn: string;
   generation: number;
-  totalEstate: number; // Inherited + extra (শতক)
+  totalEstate: number; // Net Current Estate (Inherited + extra + bought - sold)
   inheritedEstate: number; // Inherited from parent (শতক)
   extraEstate: number; // Additional personal land (শতক)
+  landBought?: number; // সর্বমোট ক্রয়কৃত জমি (শতক)
+  landSold?: number; // সর্বমোট বিক্রিত জমি (শতক)
+  currentTotalLand?: number; // বর্তমান চূড়ান্ত জমি (শতক)
   shareFractionStr: string;
   sharePercentage: number;
   legalReasonBn: string;
@@ -105,5 +140,6 @@ export interface AppStateData {
     notes?: string;
   };
   tree: HeirTreeNode;
+  transactions?: LandTransaction[];
   updatedAt: string;
 }

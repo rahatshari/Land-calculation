@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, UserCheck, Check } from 'lucide-react';
 import { Gender } from '../types';
+import { BengaliNumberInput } from './BengaliNumberInput';
 
 interface RootOwnerModalProps {
   isOpen: boolean;
@@ -33,9 +34,9 @@ export const RootOwnerModal: React.FC<RootOwnerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-        <div className="bg-emerald-800 p-5 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-800 to-teal-800 p-5 text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <UserCheck className="w-5 h-5 text-emerald-300" />
             <h3 className="font-bold text-base">মূল ভূম্যধিকারীর তথ্য ও জমির পরিমাণ</h3>
@@ -96,16 +97,13 @@ export const RootOwnerModal: React.FC<RootOwnerModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              মোট বণ্টনযোগ্য সম্পত্তির পরিমাণ (শতক):
+              মোট বণ্টনযোগ্য সম্পত্তির পরিমাণ (শতক / শতাংশ):
             </label>
-            <input
-              type="number"
-              min="0.1"
-              step="0.01"
+            <BengaliNumberInput
               value={land}
-              onChange={(e) => setLand(parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              required
+              onChange={setLand}
+              placeholder="যেমন: ১০০ বা ৫০.৭৫"
+              className="border-slate-300 text-emerald-950 font-bold"
             />
           </div>
 
@@ -119,7 +117,7 @@ export const RootOwnerModal: React.FC<RootOwnerModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5 cursor-pointer transition"
             >
               <Check className="w-4 h-4" />
               <span>সংরক্ষণ করুন</span>

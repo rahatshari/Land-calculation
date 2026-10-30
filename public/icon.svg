@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="50%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#065f46" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background Circle with Shadow -->
+  <circle cx="256" cy="256" r="236" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="12" filter="url(#shadow)" />
+  
+  <!-- Outer Decorative Ring -->
+  <circle cx="256" cy="256" r="218" fill="none" stroke="rgba(251, 191, 36, 0.4)" stroke-width="2" stroke-dasharray="8 6" />
+
+  <!-- Quranic / Geometric Crescent & Dome Motif -->
+  <path d="M 176 100 Q 256 50 336 100 Q 256 75 176 100 Z" fill="url(#goldGrad)" opacity="0.85" />
+
+  <!-- The Tree of Lineage & Inheritance (বংশ ও উত্তরাধিকার বৃক্ষ) -->
+  <!-- Tree Canopy Leaves -->
+  <circle cx="256" cy="170" r="64" fill="url(#leafGrad)" opacity="0.9" />
+  <circle cx="200" cy="205" r="50" fill="url(#leafGrad)" opacity="0.85" />
+  <circle cx="312" cy="205" r="50" fill="url(#leafGrad)" opacity="0.85" />
+  <circle cx="160" cy="245" r="40" fill="url(#leafGrad)" opacity="0.8" />
+  <circle cx="352" cy="245" r="40" fill="url(#leafGrad)" opacity="0.8" />
+
+  <!-- Golden Trunk & Spreading Roots -->
+  <path d="M 246 220 L 266 220 L 272 350 Q 320 370 350 410 L 330 415 Q 295 380 262 360 L 250 360 Q 217 380 182 415 L 162 410 Q 192 370 240 350 Z" fill="url(#goldGrad)" />
+
+  <!-- The Scales of Justice (ফারায়েজ ন্যায়দণ্ড ও দাড়িপাল্লা) -->
+  <!-- Central Balance Pillar -->
+  <rect x="251" y="140" width="10" height="150" rx="5" fill="url(#goldGrad)" filter="url(#shadow)" />
+  <circle cx="256" cy="140" r="14" fill="url(#goldGrad)" />
+  
+  <!-- Horizontal Balance Beam -->
+  <rect x="130" y="160" width="252" height="8" rx="4" fill="url(#goldGrad)" filter="url(#shadow)" />
+  <circle cx="140" cy="164" r="7" fill="url(#goldGrad)" />
+  <circle cx="372" cy="164" r="7" fill="url(#goldGrad)" />
+
+  <!-- Left Scale Strings & Pan -->
+  <line x1="140" y1="164" x2="105" y2="235" stroke="url(#goldGrad)" stroke-width="2.5" />
+  <line x1="140" y1="164" x2="175" y2="235" stroke="url(#goldGrad)" stroke-width="2.5" />
+  <path d="M 95 235 Q 140 265 185 235 Z" fill="url(#goldGrad)" opacity="0.95" filter="url(#shadow)" />
+
+  <!-- Right Scale Strings & Pan -->
+  <line x1="372" y1="164" x2="337" y2="235" stroke="url(#goldGrad)" stroke-width="2.5" />
+  <line x1="372" y1="164" x2="407" y2="235" stroke="url(#goldGrad)" stroke-width="2.5" />
+  <path d="M 327 235 Q 372 265 417 235 Z" fill="url(#goldGrad)" opacity="0.95" filter="url(#shadow)" />
+
+  <!-- Bengali Typography Ribbon / Label at Bottom -->
+  <rect x="110" y="420" width="292" height="42" rx="21" fill="#022c22" stroke="url(#goldGrad)" stroke-width="3" filter="url(#shadow)" />
+  <text x="256" y="448" text-anchor="middle" font-family="'Hind Siliguri', 'Segoe UI', Arial, sans-serif" font-weight="700" font-size="21" fill="#fef08a" letter-spacing="1">
+    ফারায়েজ ও উত্তরাধিকার
+  </text>
+</svg>

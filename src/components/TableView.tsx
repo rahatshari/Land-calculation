@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Download, FileText, ArrowUpDown, Layers, Plus } from 'lucide-react';
+import { Search, FileText, Layers, ArrowRightLeft } from 'lucide-react';
 import { HeirTreeNode } from '../types';
-import { flattenTreeForReport, FlatHeirRow } from '../utils/treeManager';
+import { flattenTreeForReport } from '../utils/treeManager';
 import { toBengaliNumber, decimalToAnaGanda } from '../utils/faraizCalculator';
 
 interface TableViewProps {
@@ -9,6 +9,8 @@ interface TableViewProps {
   decimalsPerKatha?: number;
   onSelectNodeForHeirs: (node: HeirTreeNode) => void;
   onOpenReport: () => void;
+  onViewDetails?: (node: HeirTreeNode) => void;
+  onOpenTransactions?: () => void;
 }
 
 export const TableView: React.FC<TableViewProps> = ({
@@ -16,6 +18,8 @@ export const TableView: React.FC<TableViewProps> = ({
   decimalsPerKatha = 3.30,
   onSelectNodeForHeirs,
   onOpenReport,
+  onViewDetails,
+  onOpenTransactions,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGeneration, setSelectedGeneration] = useState<number | 'all'>('all');
@@ -41,9 +45,7 @@ export const TableView: React.FC<TableViewProps> = ({
     });
   }, [allRows, searchTerm, selectedGeneration]);
 
-  // Aggregate stats
   const totalLandAllocated = useMemo(() => {
-    // Gen 1 sum represents full property of root
     const gen1Rows = allRows.filter((r) => r.generation === 1);
     return gen1Rows.reduce((acc, r) => acc + r.inheritedEstate, 0);
   }, [allRows]);
@@ -61,13 +63,23 @@ export const TableView: React.FC<TableViewProps> = ({
               খতিয়ান ও উত্তরাধিকারী তালিকা বিবরণী
             </h3>
             <p className="text-xs text-slate-500">
-              সর্বমোট ওয়ারিশ সংখ্যা: {toBengaliNumber(allRows.length, 0)} জন | মূল বণ্টনকৃত জমি: {toBengaliNumber(totalLandAllocated, 2)} শতক
+              সর্বমোট অংশীদার: {toBengaliNumber(allRows.length, 0)} জন | মূল পৈতৃক জোত: {toBengaliNumber(totalLandAllocated, 2)} শতক
             </p>
           </div>
         </div>
 
         {/* Search & Filter & Report */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {onOpenTransactions && (
+            <button
+              onClick={onOpenTransactions}
+              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 text-amber-700" />
+              <span>জমি ক্রয়-বিক্রয়</span>
+            </button>
+          )}
+
           {/* Search box */}
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
@@ -88,7 +100,7 @@ export const TableView: React.FC<TableViewProps> = ({
             }
             className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
           >
-            <option value="all">সকল প্রজন্ম (All)</option>
+            <option value="all">সকল প্রজন্ম</option>
             {generations.map((g) => (
               <option key={g} value={g}>
                 প্রজন্ম {toBengaliNumber(g, 0)}
@@ -102,7 +114,7 @@ export const TableView: React.FC<TableViewProps> = ({
             className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>সনদ ও রিপোর্ট দেখুন</span>
+            <span>সনদ ও রিপোর্ট (PDF)</span>
           </button>
         </div>
       </div>
@@ -112,71 +124,70 @@ export const TableView: React.FC<TableViewProps> = ({
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 uppercase tracking-wider">
-              <th className="px-4 py-3 text-center w-12">ক্র.নং</th>
-              <th className="px-4 py-3">ওয়ারিশের নাম</th>
-              <th className="px-4 py-3">সম্পর্ক</th>
-              <th className="px-4 py-3">প্রজন্ম</th>
-              <th className="px-4 py-3">পিতা/মাতা</th>
-              <th className="px-4 py-3">হিস্যা (ভগ্নাংশ)</th>
-              <th className="px-4 py-3">প্রাপ্ত জমি (শতক)</th>
-              <th className="px-4 py-3">কাঠা ও বিঘা</th>
-              <th className="px-4 py-3">আনা-গণ্ডা-কড়া</th>
-              <th className="px-4 py-3">আইনি বিধান ও দলিল সূত্র</th>
+              <th className="px-3 py-3 text-center w-12">ক্র.নং</th>
+              <th className="px-3 py-3">ওয়ারিশের নাম</th>
+              <th className="px-3 py-3">সম্পর্ক</th>
+              <th className="px-3 py-3">প্রজন্ম</th>
+              <th className="px-3 py-3">পিতা/মাতা</th>
+              <th className="px-3 py-3">হিস্যা (অংশ)</th>
+              <th className="px-3 py-3 text-right">মূল প্রাপ্ত জমি</th>
+              <th className="px-3 py-3 text-right">ক্রয় / বিক্রয়</th>
+              <th className="px-3 py-3 text-right font-black text-emerald-950 bg-emerald-50">বর্তমান মোট জমি</th>
+              <th className="px-3 py-3 text-right">কাঠা (৩.৩০)</th>
+              <th className="px-3 py-3 text-right">বিঘা (২০ কাঠা)</th>
+              <th className="px-3 py-3 text-right">আনা-গণ্ডা</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filteredRows.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={12} className="px-4 py-8 text-center text-slate-400">
                   কোনো ওয়ারিশের তথ্য পাওয়া যায়নি।
                 </td>
               </tr>
             ) : (
               filteredRows.map((row) => (
                 <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 text-center font-bold text-slate-500">
+                  <td className="px-3 py-3 text-center font-bold text-slate-500">
                     {toBengaliNumber(row.sl, 0)}
                   </td>
-                  <td className="px-4 py-3 font-bold text-slate-900">
+                  <td className="px-3 py-3 font-bold text-slate-900">
                     {row.name}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                       {row.relationshipBn}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-600">
+                  <td className="px-3 py-3 font-medium text-slate-600">
                     প্রজন্ম {toBengaliNumber(row.generation, 0)}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{row.parentName}</td>
-                  <td className="px-4 py-3 font-bold text-amber-700">
+                  <td className="px-3 py-3 text-slate-600">{row.parentName}</td>
+                  <td className="px-3 py-3 font-bold text-amber-800">
                     {row.shareFractionStr}{' '}
                     <span className="text-[10px] text-slate-400 font-normal">
                       ({toBengaliNumber(row.sharePercentage, 1)}%)
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-extrabold text-emerald-700 text-sm">
-                    {toBengaliNumber(row.totalEstate, 2)} শতক
-                    {row.extraEstate > 0 && (
-                      <span className="block text-[10px] text-slate-500 font-normal">
-                        (উত্তরাধিকার {toBengaliNumber(row.inheritedEstate, 2)} + নিজস্ব {toBengaliNumber(row.extraEstate, 2)})
-                      </span>
-                    )}
+                  <td className="px-3 py-3 text-right font-semibold text-slate-700">
+                    {toBengaliNumber(row.inheritedEstate, 2)} শতক
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    <div>{toBengaliNumber(row.landKatha, 2)} কাঠা</div>
-                    <div className="text-[10px] text-slate-500">
-                      {toBengaliNumber(row.landBigha, 3)} বিঘা
-                    </div>
+                  <td className="px-3 py-3 text-right text-[11px]">
+                    {row.landBought > 0 && <span className="text-emerald-700 font-bold mr-1">+{toBengaliNumber(row.landBought, 1)}</span>}
+                    {row.landSold > 0 && <span className="text-rose-700 font-bold">-{toBengaliNumber(row.landSold, 1)}</span>}
+                    {row.landBought === 0 && row.landSold === 0 && <span className="text-slate-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-[11px] text-slate-700 font-medium">
+                  <td className="px-3 py-3 text-right font-black text-emerald-800 bg-emerald-50 text-sm">
+                    {toBengaliNumber(row.currentTotalLand, 2)} শতক
+                  </td>
+                  <td className="px-3 py-3 text-right text-slate-700 font-medium">
+                    {toBengaliNumber(row.landKatha, 2)}
+                  </td>
+                  <td className="px-3 py-3 text-right text-slate-700 font-medium">
+                    {toBengaliNumber(row.landBigha, 3)}
+                  </td>
+                  <td className="px-3 py-3 text-right text-[11px] text-slate-600 font-semibold">
                     {decimalToAnaGanda(row.sharePercentage / 100)}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-[11px] text-slate-500 max-w-xs truncate"
-                    title={row.legalReasonBn}
-                  >
-                    {row.legalReasonBn}
                   </td>
                 </tr>
               ))

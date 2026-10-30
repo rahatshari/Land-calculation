@@ -746,14 +746,28 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
                   <div className="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between text-xs">
                     <div>
                       <span className="text-[10px] text-slate-400 block leading-none">
-                        জমির পরিমাণ:
+                        {((node.landBought || 0) > 0 || (node.landSold || 0) > 0) ? 'বর্তমান নিট জমি:' : 'জমির পরিমাণ:'}
                       </span>
                       <span className="font-extrabold text-emerald-300 text-xs tracking-tight">
-                        {toBengaliNumber(node.totalEstate, 2)} শতক
+                        {toBengaliNumber(node.currentTotalLand !== undefined ? node.currentTotalLand : node.totalEstate, 2)} শতক
                       </span>
                       <span className="text-[10px] text-slate-400 ml-1">
-                        ({toBengaliNumber(node.totalEstate / (decimalsPerKatha || 3.30), 2)} কাঠা)
+                        ({toBengaliNumber((node.currentTotalLand !== undefined ? node.currentTotalLand : node.totalEstate) / (decimalsPerKatha || 3.30), 2)} কাঠা)
                       </span>
+                      {((node.landBought || 0) > 0 || (node.landSold || 0) > 0) && (
+                        <div className="text-[9px] mt-0.5 flex items-center gap-1">
+                          {(node.landBought || 0) > 0 && (
+                            <span className="text-emerald-400 font-bold bg-emerald-950/60 px-1 rounded border border-emerald-500/40">
+                              +{toBengaliNumber(node.landBought, 1)} ক্রয়
+                            </span>
+                          )}
+                          {(node.landSold || 0) > 0 && (
+                            <span className="text-rose-400 font-bold bg-rose-950/60 px-1 rounded border border-rose-500/40">
+                              -{toBengaliNumber(node.landSold, 1)} বিক্রয়
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right">

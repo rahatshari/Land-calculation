@@ -8,8 +8,10 @@ import {
 } from './faraizCalculator';
 import {
   createCleanTree,
+  createSampleTree,
   updateNodeInTree,
-  recalculateEntireTree
+  recalculateEntireTree,
+  applyTransactionsToTree
 } from './treeManager';
 
 test('User Prompt Scenario 1: Male owner (Rahat), 100 decimals, 2 sons and 3 daughters (no spouse)', () => {
@@ -285,4 +287,83 @@ test('Multi-generation 3-level tree preservation and recalculation', () => {
   // Great-grandsons get 26.6667 / 2 = 13.3333 each!
   assert.ok(Math.abs(newGrandson1.children[0].totalEstate - 13.3333) < 0.01);
 });
+
+test('Childless scenario (নিঃসন্তান ব্যক্তি): Female deceased, husband + mother + 1 brother + 1 sister', () => {
+  const shares = calculateFaraizDistribution(
+    'female',
+    60,
+    {
+      husband: 1,
+      wives: 0,
+      sons: 0,
+      daughters: 0,
+      father: false,
+      mother: true,
+      grandfather: false,
+      grandmother: false,
+      brothers: 1,
+      sisters: 1,
+    }
+  );
+
+  const husband = shares.find(s => s.relationship === 'husband')!;
+  const mother = shares.find(s => s.relationship === 'mother')!;
+  const brother = shares.find(s => s.relationship === 'brother')!;
+  const sister = shares.find(s => s.relationship === 'sister')!;
+
+  // Husband: 1/2 of 60 = 30
+  assert.equal(husband.landDecimals, 30);
+  // Mother: with 2 siblings, gets 1/6 of 60 = 10
+  assert.equal(mother.landDecimals, 10);
+  // Remainder = 20 decimals -> 1 brother (2 parts) + 1 sister (1 part) = 3 parts
+  // Brother = 2/3 of 20 = 13.333...
+  assert.ok(Math.abs(brother.landDecimals - 13.3333) < 0.01);
+  // Sister = 1/3 of 20 = 6.666...
+  assert.ok(Math.abs(sister.landDecimals - 6.6667) < 0.01);
+});
+
+test('User Prompt Example: Land Transaction logic (Nahar and Kulsum sell to Hasib)', () => {
+  const tree = createSampleTree(); // Rahat 100 decimals, 2 sons (25 each), 3 daughters (12.5 each)
+
+  const txs = [
+    {
+      id: 'tx-1',
+      sellerId: 'daughter-1', // Nahar
+      sellerName: 'মেয়ে ১ (নাহার)',
+      buyerId: 'son-1',       // Hasib
+      buyerName: 'ছেলে ১ (হাসিব)',
+      amountDecimals: 5,
+      date: '৩০/১০/২০২৬',
+    },
+    {
+      id: 'tx-2',
+      sellerId: 'daughter-2', // Kulsum
+      sellerName: 'মেয়ে ২ (কুলসুম)',
+      buyerId: 'son-1',       // Hasib
+      buyerName: 'ছেলে ১ (হাসিব)',
+      amountDecimals: 5,
+      date: '৩০/১০/২০২৬',
+    },
+  ];
+
+  const updatedTree = applyTransactionsToTree(tree, txs);
+
+  const hasib = updatedTree.children.find((c: any) => c.id === 'son-1');
+  const nahar = updatedTree.children.find((c: any) => c.id === 'daughter-1');
+  const kulsum = updatedTree.children.find((c: any) => c.id === 'daughter-2');
+
+  // Hasib bought 10 decimals:
+  assert.equal(hasib.landBought, 10);
+  assert.equal(hasib.landSold, 0);
+  assert.ok(Math.abs(hasib.currentTotalLand - (hasib.inheritedEstate + 10)) < 0.001);
+
+  // Nahar sold 5 decimals:
+  assert.equal(nahar.landSold, 5);
+  assert.ok(Math.abs(nahar.currentTotalLand - (nahar.inheritedEstate - 5)) < 0.001);
+
+  // Kulsum sold 5 decimals:
+  assert.equal(kulsum.landSold, 5);
+  assert.ok(Math.abs(kulsum.currentTotalLand - (kulsum.inheritedEstate - 5)) < 0.001);
+});
+
 

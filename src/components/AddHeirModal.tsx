@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Users, UserPlus, Check, Sparkles, Scale, Info, PlusCircle, Trash2 } from 'lucide-react';
+import { X, Users, UserPlus, Check, Sparkles, Scale, Info, PlusCircle, Trash2, HeartHandshake } from 'lucide-react';
 import { HeirCountInput, HeirTreeNode, IndividualHeirConfig, RelationshipType } from '../types';
 import { calculateFaraizDistribution, toBengaliNumber } from '../utils/faraizCalculator';
+import { BengaliNumberInput } from './BengaliNumberInput';
 
 interface AddHeirModalProps {
   targetNode: HeirTreeNode | null;
@@ -12,32 +13,58 @@ interface AddHeirModalProps {
     namedHeirs: IndividualHeirConfig[],
     extraLand: number
   ) => void;
+  decimalsPerKatha?: number;
+  kathaPerBigha?: number;
 }
 
 export const AddHeirModal: React.FC<AddHeirModalProps> = ({
   targetNode,
   onClose,
   onSaveHeirs,
+  decimalsPerKatha = 3.30,
+  kathaPerBigha = 20,
 }) => {
   if (!targetNode) return null;
 
   const isMale = targetNode.gender === 'male';
-  const initialConfig = targetNode.inputConfig || {
+
+  const defaultEmptyConfig: HeirCountInput = {
     husband: 0,
-    wives: isMale ? 1 : 0,
-    sons: 1,
-    daughters: 1,
+    wives: 0,
+    sons: 0,
+    daughters: 0,
     father: false,
     mother: false,
     grandfather: false,
     grandmother: false,
     brothers: 0,
     sisters: 0,
+    consanguineBrothers: 0,
+    consanguineSisters: 0,
+    uterineBrothers: 0,
+    uterineSisters: 0,
+    sonSons: 0,
+    sonDaughters: 0,
+    nephews: 0,
+    paternalUncles: 0,
+    paternalCousins: 0,
   };
 
-  const [inputConfig, setInputConfig] = useState<HeirCountInput>(initialConfig);
+  const [inputConfig, setInputConfig] = useState<HeirCountInput>(() => {
+    if (targetNode.inputConfig) {
+      return { ...defaultEmptyConfig, ...targetNode.inputConfig };
+    }
+    return {
+      ...defaultEmptyConfig,
+      // By default clean without forced values
+      wives: isMale ? 1 : 0,
+      sons: 0,
+      daughters: 0,
+    };
+  });
+
   const [extraLand, setExtraLand] = useState<number>(targetNode.extraEstate || 0);
-  const [showExtended, setShowExtended] = useState(false);
+  const [activeTab, setActiveTab] = useState<'primary' | 'siblings' | 'extended'>('primary');
   const [namedHeirs, setNamedHeirs] = useState<IndividualHeirConfig[]>(
     targetNode.namedHeirs || []
   );
@@ -84,7 +111,7 @@ export const AddHeirModal: React.FC<AddHeirModalProps> = ({
       updated.push(
         existing || {
           id,
-          name: `ছেলে ${toBengaliNumber(i + 1, 0)}`,
+          name: inputConfig.sons > 1 ? `ছেলে ${toBengaliNumber(i + 1, 0)}` : 'ছেলে',
           relationship: 'son',
           relationshipBn: 'পুত্র',
           gender: 'male',
@@ -99,7 +126,7 @@ export const AddHeirModal: React.FC<AddHeirModalProps> = ({
       updated.push(
         existing || {
           id,
-          name: `মেয়ে ${toBengaliNumber(i + 1, 0)}`,
+          name: inputConfig.daughters > 1 ? `মেয়ে ${toBengaliNumber(i + 1, 0)}` : 'মেয়ে',
           relationship: 'daughter',
           relationshipBn: 'কন্যা',
           gender: 'female',
@@ -135,6 +162,131 @@ export const AddHeirModal: React.FC<AddHeirModalProps> = ({
       );
     }
 
+    // Grandparents
+    if (inputConfig.grandfather) {
+      const id = `${targetNode.id}-grandfather-1`;
+      const existing = namedHeirs.find((h) => h.id === id || h.relationship === 'paternal_grandfather');
+      updated.push(
+        existing || {
+          id,
+          name: 'দাদা',
+          relationship: 'paternal_grandfather',
+          relationshipBn: 'দাদা',
+          gender: 'male',
+        }
+      );
+    }
+    if (inputConfig.grandmother) {
+      const id = `${targetNode.id}-grandmother-1`;
+      const existing = namedHeirs.find((h) => h.id === id || h.relationship === 'paternal_grandmother');
+      updated.push(
+        existing || {
+          id,
+          name: 'দাদী/নানী',
+          relationship: 'paternal_grandmother',
+          relationshipBn: 'দাদী/নানী',
+          gender: 'female',
+        }
+      );
+    }
+
+    // Siblings
+    for (let i = 0; i < (inputConfig.brothers || 0); i++) {
+      const id = `${targetNode.id}-brother-${i + 1}`;
+      const existing = namedHeirs.find((h) => h.id === id);
+      updated.push(
+        existing || {
+          id,
+          name: (inputConfig.brothers || 0) > 1 ? `সহোদর ভাই ${toBengaliNumber(i + 1, 0)}` : 'সহোদর ভাই',
+          relationship: 'brother',
+          relationshipBn: 'সহোদর ভাই',
+          gender: 'male',
+        }
+      );
+    }
+    for (let i = 0; i < (inputConfig.sisters || 0); i++) {
+      const id = `${targetNode.id}-sister-${i + 1}`;
+      const existing = namedHeirs.find((h) => h.id === id);
+      updated.push(
+        existing || {
+          id,
+          name: (inputConfig.sisters || 0) > 1 ? `সহোদর বোন ${toBengaliNumber(i + 1, 0)}` : 'সহোদর বোন',
+          relationship: 'sister',
+          relationshipBn: 'সহোদর বোন',
+          gender: 'female',
+        }
+      );
+    }
+
+    // Uterine Siblings
+    for (let i = 0; i < (inputConfig.uterineBrothers || 0); i++) {
+      const id = `${targetNode.id}-uterine-brother-${i + 1}`;
+      const existing = namedHeirs.find((h) => h.id === id);
+      updated.push(
+        existing || {
+          id,
+          name: `বৈপিত্রীয় ভাই ${toBengaliNumber(i + 1, 0)}`,
+          relationship: 'uterine_brother',
+          relationshipBn: 'বৈপিত্রীয় ভাই',
+          gender: 'male',
+        }
+      );
+    }
+    for (let i = 0; i < (inputConfig.uterineSisters || 0); i++) {
+      const id = `${targetNode.id}-uterine-sister-${i + 1}`;
+      const existing = namedHeirs.find((h) => h.id === id);
+      updated.push(
+        existing || {
+          id,
+          name: `বৈপিত্রীয় বোন ${toBengaliNumber(i + 1, 0)}`,
+          relationship: 'uterine_sister',
+          relationshipBn: 'বৈপিত্রীয় বোন',
+          gender: 'female',
+        }
+      );
+    }
+
+    // Nephews, Uncles, Cousins
+    for (let i = 0; i < (inputConfig.nephews || 0); i++) {
+      const id = `${targetNode.id}-nephew-${i + 1}`;
+      const existing = namedHeirs.find((h) => h.id === id);
+      updated.push(
+        existing || {
+          id,
+          name: `ভাতিজা ${toBengaliNumber(i + 1, 0)} (ভাইয়ের ছেলে)`,
+          relationship: 'nephew',
+          relationshipBn: 'ভাতিজা',
+          gender: 'male',
+        }
+      );
+    }
+    for (let i = 0; i < (inputConfig.paternalUncles || 0); i++) {
+      const id = `${targetNode.id}-uncle-${i + 1}`;
+      const existing = namedHeirs.find((h) => h.id === id);
+      updated.push(
+        existing || {
+          id,
+          name: `আপন চাচা ${toBengaliNumber(i + 1, 0)}`,
+          relationship: 'paternal_uncle',
+          relationshipBn: 'আপন চাচা',
+          gender: 'male',
+        }
+      );
+    }
+    for (let i = 0; i < (inputConfig.paternalCousins || 0); i++) {
+      const id = `${targetNode.id}-cousin-${i + 1}`;
+      const existing = namedHeirs.find((h) => h.id === id);
+      updated.push(
+        existing || {
+          id,
+          name: `চাচাতো ভাই ${toBengaliNumber(i + 1, 0)}`,
+          relationship: 'paternal_cousin',
+          relationshipBn: 'চাচাতো ভাই',
+          gender: 'male',
+        }
+      );
+    }
+
     setNamedHeirs(updated);
   }, [
     inputConfig.wives,
@@ -143,21 +295,32 @@ export const AddHeirModal: React.FC<AddHeirModalProps> = ({
     inputConfig.daughters,
     inputConfig.father,
     inputConfig.mother,
+    inputConfig.grandfather,
+    inputConfig.grandmother,
+    inputConfig.brothers,
+    inputConfig.sisters,
+    inputConfig.uterineBrothers,
+    inputConfig.uterineSisters,
+    inputConfig.nephews,
+    inputConfig.paternalUncles,
+    inputConfig.paternalCousins,
+    targetNode.id,
     isMale,
   ]);
 
-  // Total estate available to distribute
-  const currentTotalEstate = (targetNode.inheritedEstate || 0) + (extraLand || 0);
-
-  // Live preview calculation
-  const previewShares = useMemo(() => {
+  // Live preview distribution
+  const liveShares = useMemo(() => {
+    const totalDistributable = (targetNode.inheritedEstate || targetNode.totalEstate) + extraLand;
     return calculateFaraizDistribution(
       targetNode.gender,
-      currentTotalEstate,
+      totalDistributable,
       inputConfig,
-      namedHeirs
+      namedHeirs,
+      targetNode.id,
+      decimalsPerKatha,
+      kathaPerBigha
     );
-  }, [targetNode.gender, currentTotalEstate, inputConfig, namedHeirs]);
+  }, [targetNode, inputConfig, namedHeirs, extraLand, decimalsPerKatha, kathaPerBigha]);
 
   const handleNameChange = (id: string, newName: string) => {
     setNamedHeirs((prev) =>
@@ -170,27 +333,37 @@ export const AddHeirModal: React.FC<AddHeirModalProps> = ({
     onClose();
   };
 
+  const totalDistributable = (targetNode.inheritedEstate || targetNode.totalEstate) + extraLand;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
-      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4 flex flex-col max-h-[92vh]">
-        {/* Modal Header */}
-        <div className="bg-gradient-to-r from-emerald-800 to-teal-700 px-4 sm:px-6 py-3 sm:py-4 text-white flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shrink-0">
-              <Users className="w-5 h-5 text-emerald-300" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-3 max-h-[94vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-800 to-teal-800 p-5 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-white/10 text-emerald-200">
+              <Users className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-bold text-sm sm:text-base md:text-lg leading-tight">
-                ওয়ারিশ ও উত্তরাধিকারী বণ্টন বিন্যাস
-              </h3>
-              <p className="text-[11px] sm:text-xs text-emerald-100">
-                স্বত্বাধিকারী: <strong className="text-white">{targetNode.name}</strong> ({targetNode.relationshipBn}) | মোট জমি: <strong className="text-amber-300">{toBengaliNumber(currentTotalEstate, 2)} শতক</strong>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-base sm:text-lg">
+                  {targetNode.name}-এর উত্তরাধিকারী বণ্টন ও ফারায়েজ তথ্য
+                </h3>
+                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
+                  প্রজন্ম {toBengaliNumber(targetNode.generation, 0)}
+                </span>
+              </div>
+              <p className="text-xs text-emerald-200">
+                বণ্টনযোগ্য মোট জমি:{' '}
+                <strong className="text-white font-black">
+                  {toBengaliNumber(totalDistributable, 2)} শতক
+                </strong>
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-colors cursor-pointer shrink-0"
+            className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-colors cursor-pointer"
             aria-label="বন্ধ করুন"
           >
             <X className="w-5 h-5" />
@@ -198,306 +371,397 @@ export const AddHeirModal: React.FC<AddHeirModalProps> = ({
         </div>
 
         {/* Modal Content */}
-        <div className="p-3.5 sm:p-6 max-h-[75vh] overflow-y-auto space-y-4 sm:space-y-6">
-          {/* Section: Extra Land Added */}
-          {targetNode.relationship !== 'root' && (
-            <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <label className="text-xs font-bold text-emerald-950 block">
-                  উত্তরাধিকার প্রাপ্ত জমি: {toBengaliNumber(targetNode.inheritedEstate, 2)} শতক
-                </label>
-                <span className="text-[11px] text-emerald-700">
-                  উক্ত ব্যক্তির নিজের কেনা/অর্জিত অতিরিক্ত জমি থাকলে এখানে যোগ করতে পারেন:
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-700">+ নিজস্ব জমি:</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={extraLand}
-                  onChange={(e) => setExtraLand(Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="w-24 px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg text-sm font-bold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <span className="text-xs text-slate-600">শতক</span>
-              </div>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Form: All Islamic Heirs Picker */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Category Tabs */}
+            <div className="flex border-b border-slate-200 text-xs font-bold gap-2 pb-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab('primary')}
+                className={`pb-2 px-3 border-b-2 transition-all cursor-pointer ${
+                  activeTab === 'primary'
+                    ? 'border-emerald-600 text-emerald-800'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                ১. সন্তান ও পিতামাতা
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('siblings')}
+                className={`pb-2 px-3 border-b-2 transition-all cursor-pointer ${
+                  activeTab === 'siblings'
+                    ? 'border-emerald-600 text-emerald-800'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                ২. ভাই-বোন (নিঃসন্তান অবস্থা)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('extended')}
+                className={`pb-2 px-3 border-b-2 transition-all cursor-pointer ${
+                  activeTab === 'extended'
+                    ? 'border-emerald-600 text-emerald-800'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                ৩. অন্যান্য ওয়ারিশ ও নিজস্ব জমি
+              </button>
             </div>
-          )}
 
-          {/* Section: Primary Heirs Count */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <Scale className="w-4 h-4 text-emerald-600" />
-              <span>ওয়ারিশদের সংখ্যা নির্ধারণ করুন (বাংলাদেশ ফারায়েজ আইনানুসারে)</span>
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {/* Spouse */}
-              {isMale ? (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                  <div>
-                    <label className="text-xs font-bold text-slate-800 block">স্ত্রী (Wife)</label>
-                    <span className="text-[10px] text-slate-500">সন্তান থাকলে ১/৮ অংশ</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setInputConfig({ ...inputConfig, wives: Math.max(0, inputConfig.wives - 1) })}
-                      className="w-7 h-7 rounded-lg bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 flex items-center justify-center cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="w-5 text-center font-bold text-slate-800 text-sm">
-                      {toBengaliNumber(inputConfig.wives, 0)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setInputConfig({ ...inputConfig, wives: Math.min(4, inputConfig.wives + 1) })}
-                      className="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-bold text-white flex items-center justify-center cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                  <div>
-                    <label className="text-xs font-bold text-slate-800 block">স্বামী (Husband)</label>
-                    <span className="text-[10px] text-slate-500">সন্তান থাকলে ১/৪ অংশ</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setInputConfig({ ...inputConfig, husband: 0 })}
-                      className={`px-2 py-1 text-xs rounded-lg font-semibold transition-colors ${
-                        inputConfig.husband === 0 ? 'bg-slate-300 text-slate-800' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      না
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInputConfig({ ...inputConfig, husband: 1 })}
-                      className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors ${
-                        inputConfig.husband === 1 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      হ্যাঁ
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Sons */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block">ছেলে / পুত্র সন্তান</label>
-                  <span className="text-[10px] text-slate-500">আছাবা (২ অংশ পাবে)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setInputConfig({ ...inputConfig, sons: Math.max(0, inputConfig.sons - 1) })}
-                    className="w-7 h-7 rounded-lg bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 flex items-center justify-center cursor-pointer"
-                  >
-                    -
-                  </button>
-                  <span className="w-5 text-center font-bold text-slate-800 text-sm">
-                    {toBengaliNumber(inputConfig.sons, 0)}
+            {/* TAB 1: Primary Heirs */}
+            {activeTab === 'primary' && (
+              <div className="space-y-4">
+                {/* Spouse Selection */}
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="block text-xs font-bold text-slate-800 mb-2">
+                    {isMale ? 'স্ত্রী সংখ্যা:' : 'স্বামী (বেঁচে আছেন কিনা):'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setInputConfig({ ...inputConfig, sons: inputConfig.sons + 1 })}
-                    className="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-bold text-white flex items-center justify-center cursor-pointer"
-                  >
-                    +
-                  </button>
+                  {isMale ? (
+                    <div className="grid grid-cols-5 gap-2">
+                      {[0, 1, 2, 3, 4].map((cnt) => (
+                        <button
+                          key={cnt}
+                          type="button"
+                          onClick={() => setInputConfig({ ...inputConfig, wives: cnt })}
+                          className={`py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                            inputConfig.wives === cnt
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {cnt === 0 ? 'নেই' : `${toBengaliNumber(cnt, 0)} জন`}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setInputConfig({ ...inputConfig, husband: 1 })}
+                        className={`py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                          inputConfig.husband > 0
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        স্বামী বেঁচে আছেন
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInputConfig({ ...inputConfig, husband: 0 })}
+                        className={`py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                          inputConfig.husband === 0
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        স্বামী মৃত / নেই
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Daughters */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block">মেয়ে / কন্যা সন্তান</label>
-                  <span className="text-[10px] text-slate-500">পুত্রের অর্ধেক (১ অংশ পাবে)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setInputConfig({ ...inputConfig, daughters: Math.max(0, inputConfig.daughters - 1) })}
-                    className="w-7 h-7 rounded-lg bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 flex items-center justify-center cursor-pointer"
-                  >
-                    -
-                  </button>
-                  <span className="w-5 text-center font-bold text-slate-800 text-sm">
-                    {toBengaliNumber(inputConfig.daughters, 0)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setInputConfig({ ...inputConfig, daughters: inputConfig.daughters + 1 })}
-                    className="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-bold text-white flex items-center justify-center cursor-pointer"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* Father */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block">পিতা (জীবিত?)</label>
-                  <span className="text-[10px] text-slate-500">সন্তান থাকলে ১/৬ অংশ</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setInputConfig({ ...inputConfig, father: false })}
-                    className={`px-2 py-1 text-xs rounded-lg font-semibold transition-colors ${
-                      !inputConfig.father ? 'bg-slate-300 text-slate-800' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    না
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInputConfig({ ...inputConfig, father: true })}
-                    className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors ${
-                      inputConfig.father ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    হ্যাঁ
-                  </button>
-                </div>
-              </div>
-
-              {/* Mother */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block">মাতা (জীবিত?)</label>
-                  <span className="text-[10px] text-slate-500">সন্তান থাকলে ১/৬ অংশ</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setInputConfig({ ...inputConfig, mother: false })}
-                    className={`px-2 py-1 text-xs rounded-lg font-semibold transition-colors ${
-                      !inputConfig.mother ? 'bg-slate-300 text-slate-800' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    না
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInputConfig({ ...inputConfig, mother: true })}
-                    className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors ${
-                      inputConfig.mother ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    হ্যাঁ
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Custom Names for Heirs */}
-          {namedHeirs.length > 0 && (
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  ওয়ারিশদের সুনির্দিষ্ট নাম লিখুন (ঐচ্ছিক):
-                </h4>
-                <span className="text-[11px] text-slate-500">বংশবৃক্ষে এই নামগুলো প্রদর্শিত হবে</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                {namedHeirs.map((heir) => (
-                  <div key={heir.id} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="text-[10px] font-semibold text-slate-500 block mb-1">
-                      {heir.relationshipBn}:
-                    </span>
-                    <input
-                      type="text"
-                      value={heir.name}
-                      onChange={(e) => handleNameChange(heir.id, e.target.value)}
-                      placeholder={heir.name}
-                      className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                {/* Sons and Daughters with BengaliNumberInput (no sticky 0) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      পুত্র সংখ্যা (ছেলে):
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.sons}
+                      onChange={(v) => setInputConfig({ ...inputConfig, sons: Math.round(v) })}
+                      placeholder="যেমন: ২"
+                      min={0}
+                      className="border-slate-300 font-bold text-slate-800"
                     />
                   </div>
-                ))}
+
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      কন্যা সংখ্যা (মেয়ে):
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.daughters}
+                      onChange={(v) => setInputConfig({ ...inputConfig, daughters: Math.round(v) })}
+                      placeholder="যেমন: ৩"
+                      min={0}
+                      className="border-slate-300 font-bold text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Parents (পিতা ও মাতা) */}
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <span className="block text-xs font-bold text-slate-800">
+                    পিতা ও মাতা (বর্তমানে জীবিত আছেন কিনা):
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={inputConfig.father}
+                        onChange={(e) => setInputConfig({ ...inputConfig, father: e.target.checked })}
+                        className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                      />
+                      <span className="text-xs font-semibold text-slate-800">পিতা জীবিত আছেন</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={inputConfig.mother}
+                        onChange={(e) => setInputConfig({ ...inputConfig, mother: e.target.checked })}
+                        className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                      />
+                      <span className="text-xs font-semibold text-slate-800">মাতা জীবিত আছেন</span>
+                    </label>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Section: Live Preview of Shares */}
-          <div className="space-y-3 pt-2">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>ফারায়েজ বণ্টন ফলাফল তাৎক্ষণিক প্রিভিউ (Live Preview):</span>
-            </h4>
+            {/* TAB 2: Siblings (Brother/Sister for Childless / Kalala cases) */}
+            {activeTab === 'siblings' && (
+              <div className="space-y-4">
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                  <strong>নিঃসন্তান বা পিতার অবর্তমানে ভাই-বোন ফারায়েজ:</strong> পবিত্র কুরআনের সূরা নিসা-র ১৭৬ ও ১২ নম্বর আয়াত অনুযায়ী সন্তান বা পিতা না থাকলে সহোদর বা বৈপিত্রীয় ভাই-বোনেরা সম্পত্তির বৈধ অংশীদার হন।
+                </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
-                  <tr>
-                    <th className="px-3 py-2">ওয়ারিশের নাম ও সম্পর্ক</th>
-                    <th className="px-3 py-2">অংশ (ভগ্নাংশ)</th>
-                    <th className="px-3 py-2">শতক (শতাংশ)</th>
-                    <th className="px-3 py-2">কাঠা</th>
-                    <th className="px-3 py-2">আইনি ভিত্তি</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {previewShares.map((share, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80">
-                      <td className="px-3 py-2 font-medium text-slate-900">
-                        {share.name}{' '}
-                        <span className="text-[10px] text-slate-500 font-normal">
-                          ({share.relationshipBn})
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 font-bold text-amber-600">
-                        {share.shareFractionStr}{' '}
-                        <span className="text-[10px] text-slate-400">
-                          ({toBengaliNumber(share.sharePercentage, 1)}%)
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 font-bold text-emerald-700">
-                        {toBengaliNumber(share.landDecimals, 2)} শতক
-                      </td>
-                      <td className="px-3 py-2 text-slate-600">
-                        {toBengaliNumber(share.landKatha, 2)} কাঠা
-                      </td>
-                      <td className="px-3 py-2 text-[10px] text-slate-500 max-w-[200px] truncate" title={share.legalReasonBn}>
-                        {share.legalReasonBn}
-                      </td>
-                    </tr>
+                {/* Full Siblings (সহোদর ভাই ও বোন) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      সহোদর ভাই সংখ্যা (আপন ভাই):
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.brothers}
+                      onChange={(v) => setInputConfig({ ...inputConfig, brothers: Math.round(v) })}
+                      placeholder="যেমন: ১"
+                      min={0}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      সহোদর বোন সংখ্যা (আপন বোন):
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.sisters}
+                      onChange={(v) => setInputConfig({ ...inputConfig, sisters: Math.round(v) })}
+                      placeholder="যেমন: ১"
+                      min={0}
+                    />
+                  </div>
+                </div>
+
+                {/* Uterine Siblings (বৈপিত্রীয় ভাই ও বোন - মায়ের দিকের ভাইবোন) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      বৈপিত্রীয় ভাই (মায়ের পেটের ভাই):
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.uterineBrothers}
+                      onChange={(v) => setInputConfig({ ...inputConfig, uterineBrothers: Math.round(v) })}
+                      placeholder="যেমন: ০"
+                      min={0}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      বৈপিত্রীয় বোন (মায়ের পেটের বোন):
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.uterineSisters}
+                      onChange={(v) => setInputConfig({ ...inputConfig, uterineSisters: Math.round(v) })}
+                      placeholder="যেমন: ০"
+                      min={0}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Extended Heirs & Personal Land */}
+            {activeTab === 'extended' && (
+              <div className="space-y-4">
+                {/* Grandparents */}
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <span className="block text-xs font-bold text-slate-800">
+                    দাদা ও দাদী/নানী (পিতা/মাতা মৃত হলে):
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={inputConfig.grandfather}
+                        onChange={(e) => setInputConfig({ ...inputConfig, grandfather: e.target.checked })}
+                        className="w-4 h-4 text-emerald-600 rounded border-slate-300"
+                      />
+                      <span className="text-xs font-medium text-slate-700">দাদা জীবিত</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={inputConfig.grandmother}
+                        onChange={(e) => setInputConfig({ ...inputConfig, grandmother: e.target.checked })}
+                        className="w-4 h-4 text-emerald-600 rounded border-slate-300"
+                      />
+                      <span className="text-xs font-medium text-slate-700">দাদী / নানী জীবিত</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Nephews / Uncles / Cousins (আছাবা হিসেবে) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      ভাতিজা (ভাইয়ের ছেলে):
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.nephews}
+                      onChange={(v) => setInputConfig({ ...inputConfig, nephews: Math.round(v) })}
+                      placeholder="০"
+                      min={0}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      আপন চাচা:
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.paternalUncles}
+                      onChange={(v) => setInputConfig({ ...inputConfig, paternalUncles: Math.round(v) })}
+                      placeholder="০"
+                      min={0}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      চাচাতো ভাই:
+                    </label>
+                    <BengaliNumberInput
+                      value={inputConfig.paternalCousins}
+                      onChange={(v) => setInputConfig({ ...inputConfig, paternalCousins: Math.round(v) })}
+                      placeholder="০"
+                      min={0}
+                    />
+                  </div>
+                </div>
+
+                {/* Extra Personal Land */}
+                <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200">
+                  <label className="block text-xs font-bold text-emerald-950 mb-1">
+                    {targetNode.name}-এর নিজস্ব অতিরিক্ত সম্পত্তি (শতক):
+                  </label>
+                  <BengaliNumberInput
+                    value={extraLand}
+                    onChange={setExtraLand}
+                    placeholder="যেমন: ৫ বা ১০"
+                    min={0}
+                    className="border-emerald-300 text-emerald-950 font-bold"
+                  />
+                  <span className="text-[11px] text-emerald-700 mt-1 block">
+                    উত্তরাধিকার সূত্রে প্রাপ্ত সম্পত্তি ছাড়াও যদি কোনো স্ব-অর্জিত বা ক্রয়কৃত জমি থাকে যা তিনি সন্তানদের দিয়ে যেতে চান।
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Custom Individual Heir Names */}
+            {namedHeirs.length > 0 && (
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <span className="block text-xs font-bold text-slate-800 mb-2 uppercase tracking-wider">
+                  ওয়ারিশদের সুনির্দিষ্ট নাম নির্ধারণ (ঐচ্ছিক):
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                  {namedHeirs.map((heir) => (
+                    <div key={heir.id} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200">
+                      <span className="text-[10px] font-semibold text-slate-500 min-w-16">
+                        {heir.relationshipBn}:
+                      </span>
+                      <input
+                        type="text"
+                        value={heir.name}
+                        onChange={(e) => handleNameChange(heir.id, e.target.value)}
+                        className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Live Distribution Preview */}
+          <div className="lg:col-span-5 bg-slate-50 rounded-2xl border border-slate-200 p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                  <Scale className="w-4 h-4 text-emerald-600" />
+                  <span>তাৎক্ষণিক বণ্টন ফলাফল ({toBengaliNumber(liveShares.length, 0)} জন)</span>
+                </div>
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  মোট: {toBengaliNumber(totalDistributable, 2)} শতক
+                </span>
+              </div>
+
+              {liveShares.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">
+                  কোনো ওয়ারিশ নির্বাচিত হয়নি। বাম পাশের মেনু থেকে জীবিত ওয়ারিশ নির্বাচন করুন।
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                  {liveShares.map((s) => (
+                    <div
+                      key={s.id}
+                      className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <strong className="text-slate-900 font-bold block">{s.name}</strong>
+                        <span className="text-[11px] text-slate-500">
+                          {s.relationshipBn} • {s.shareFractionStr} অংশ ({toBengaliNumber(s.sharePercentage, 2)}%)
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-black text-emerald-800 block">
+                          {toBengaliNumber(s.landDecimals, 2)} শতক
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {toBengaliNumber(s.landKatha, 2)} কাঠা
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 cursor-pointer"
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 cursor-pointer transition-all"
+              >
+                <Check className="w-4 h-4" />
+                <span>সংরক্ষণ ও বৃক্ষে প্রয়োগ করুন</span>
+              </button>
             </div>
           </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div className="bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors cursor-pointer text-center"
-          >
-            বাতিল
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSave}
-            className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Check className="w-4 h-4" />
-            <span>সংরক্ষণ করুন ও বংশবৃক্ষে যোগ করুন</span>
-          </button>
         </div>
       </div>
     </div>
