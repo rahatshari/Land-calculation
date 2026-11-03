@@ -195,7 +195,7 @@ export const MultiGenModal: React.FC<MultiGenModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4 flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-teal-800 px-4 sm:px-6 py-3 sm:py-4 text-white flex items-center justify-between">

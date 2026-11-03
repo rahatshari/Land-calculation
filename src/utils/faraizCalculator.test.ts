@@ -348,22 +348,26 @@ test('User Prompt Example: Land Transaction logic (Nahar and Kulsum sell to Hasi
 
   const updatedTree = applyTransactionsToTree(tree, txs);
 
-  const hasib = updatedTree.children.find((c: any) => c.id === 'son-1');
-  const nahar = updatedTree.children.find((c: any) => c.id === 'daughter-1');
-  const kulsum = updatedTree.children.find((c: any) => c.id === 'daughter-2');
+  const hasib = updatedTree.children?.find((c: any) => c.id === 'son-1');
+  const nahar = updatedTree.children?.find((c: any) => c.id === 'daughter-1');
+  const kulsum = updatedTree.children?.find((c: any) => c.id === 'daughter-2');
+
+  assert.ok(hasib);
+  assert.ok(nahar);
+  assert.ok(kulsum);
 
   // Hasib bought 10 decimals:
-  assert.equal(hasib.landBought, 10);
-  assert.equal(hasib.landSold, 0);
-  assert.ok(Math.abs(hasib.currentTotalLand - (hasib.inheritedEstate + 10)) < 0.001);
+  assert.equal(hasib!.landBought, 10);
+  assert.equal(hasib!.landSold, 0);
+  assert.ok(Math.abs((hasib!.currentTotalLand || 0) - ((hasib!.inheritedEstate || 0) + 10)) < 0.001);
 
   // Nahar sold 5 decimals:
-  assert.equal(nahar.landSold, 5);
-  assert.ok(Math.abs(nahar.currentTotalLand - (nahar.inheritedEstate - 5)) < 0.001);
+  assert.equal(nahar!.landSold, 5);
+  assert.ok(Math.abs((nahar!.currentTotalLand || 0) - ((nahar!.inheritedEstate || 0) - 5)) < 0.001);
 
   // Kulsum sold 5 decimals:
-  assert.equal(kulsum.landSold, 5);
-  assert.ok(Math.abs(kulsum.currentTotalLand - (kulsum.inheritedEstate - 5)) < 0.001);
+  assert.equal(kulsum!.landSold, 5);
+  assert.ok(Math.abs((kulsum!.currentTotalLand || 0) - ((kulsum!.inheritedEstate || 0) - 5)) < 0.001);
 });
 
 

@@ -48,6 +48,7 @@ export interface HeirCountInput {
   father: boolean;
   mother: boolean;
   grandfather: boolean; // দাদা
+  paternalGrandfather?: boolean; // দাদা
   grandmother: boolean; // দাদী / নানী
   paternalGrandmother?: boolean;
   maternalGrandmother?: boolean;

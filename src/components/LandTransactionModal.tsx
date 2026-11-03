@@ -13,6 +13,7 @@ interface LandTransactionModalProps {
   onAddTransaction: (transaction: Omit<LandTransaction, 'id'>) => void;
   onDeleteTransaction: (id: string) => void;
   defaultPersonId?: string;
+  defaultRole?: 'seller' | 'buyer';
 }
 
 export const LandTransactionModal: React.FC<LandTransactionModalProps> = ({
@@ -23,26 +24,52 @@ export const LandTransactionModal: React.FC<LandTransactionModalProps> = ({
   onAddTransaction,
   onDeleteTransaction,
   defaultPersonId,
+  defaultRole = 'seller',
 }) => {
   if (!isOpen) return null;
 
   const allPersons = getAllPersonsInTree(rootNode);
 
   const [sellerId, setSellerId] = useState<string>(() => {
-    // If a default person is passed, maybe they are selling or buying
     if (defaultPersonId && allPersons.some(p => p.id === defaultPersonId)) {
+      if (defaultRole === 'buyer') {
+        const other = allPersons.find(p => p.id !== defaultPersonId);
+        return other?.id || allPersons[0]?.id || '';
+      }
       return defaultPersonId;
     }
     return allPersons[0]?.id || '';
   });
 
   const [buyerId, setBuyerId] = useState<string>(() => {
+    if (defaultPersonId && allPersons.some(p => p.id === defaultPersonId)) {
+      if (defaultRole === 'buyer') {
+        return defaultPersonId;
+      }
+      const other = allPersons.find(p => p.id !== defaultPersonId);
+      return other?.id || allPersons[0]?.id || '';
+    }
     const candidate = allPersons.find(p => p.id !== sellerId);
     return candidate?.id || allPersons[0]?.id || '';
   });
 
   const [amount, setAmount] = useState<number>(0);
   const [note, setNote] = useState<string>('');
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    if (defaultPersonId && allPersons.some(p => p.id === defaultPersonId)) {
+      if (defaultRole === 'buyer') {
+        setBuyerId(defaultPersonId);
+        const other = allPersons.find(p => p.id !== defaultPersonId);
+        if (other) setSellerId(other.id);
+      } else {
+        setSellerId(defaultPersonId);
+        const other = allPersons.find(p => p.id !== defaultPersonId);
+        if (other) setBuyerId(other.id);
+      }
+    }
+  }, [isOpen, defaultPersonId, defaultRole]);
 
   const currentSeller = allPersons.find(p => p.id === sellerId);
   const currentBuyer = allPersons.find(p => p.id === buyerId);
@@ -78,7 +105,7 @@ export const LandTransactionModal: React.FC<LandTransactionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4 max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-teal-800 p-5 text-white flex items-center justify-between shrink-0">

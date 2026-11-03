@@ -66,6 +66,7 @@ export default function App() {
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [transactionDefaultPersonId, setTransactionDefaultPersonId] = useState<string | undefined>(undefined);
+  const [transactionDefaultRole, setTransactionDefaultRole] = useState<'seller' | 'buyer' | undefined>(undefined);
 
   // Regional config
   const decimalsPerKatha = 3.30;
@@ -253,8 +254,9 @@ export default function App() {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const handleOpenTransactionForPerson = (personId: string) => {
+  const handleOpenTransactionForPerson = (personId?: string, role?: 'seller' | 'buyer') => {
     setTransactionDefaultPersonId(personId);
+    setTransactionDefaultRole(role);
     setIsTransactionModalOpen(true);
   };
 
@@ -269,6 +271,7 @@ export default function App() {
         onOpenConverter={() => setIsConverterOpen(true)}
         onOpenTransactions={() => {
           setTransactionDefaultPersonId(undefined);
+          setTransactionDefaultRole(undefined);
           setIsTransactionModalOpen(true);
         }}
         onLoadSample={handleLoadSample}
@@ -276,8 +279,8 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 space-y-5">
-        {/* Primary Root Owner Controller Card with Big Logo Banner */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 space-y-4">
+        {/* Primary Root Owner Controller Card */}
         <RootOwnerCard
           rootNode={treeData}
           decimalsPerKatha={decimalsPerKatha}
@@ -287,47 +290,27 @@ export default function App() {
           onOpenMultiGenModal={() => setIsMultiGenOpen(true)}
           onOpenTransactions={() => {
             setTransactionDefaultPersonId(undefined);
+            setTransactionDefaultRole(undefined);
             setIsTransactionModalOpen(true);
           }}
         />
 
         {/* Dynamic View: Tree or Table */}
         {activeView === 'tree' ? (
-          <div className="space-y-4">
-            <InheritanceTreeView
-              rootNode={treeData}
-              decimalsPerKatha={decimalsPerKatha}
-              onSelectNodeForHeirs={(node) => setSelectedNodeForHeirs(node)}
-              onOpenMultiGenModal={() => setIsMultiGenOpen(true)}
-              onViewDetails={(node) => setSelectedNodeForDetails(node)}
-              onDeleteNode={handleDeleteNode}
-              onToggleCollapse={handleToggleCollapse}
-              onExpandAll={handleExpandAll}
-              onCollapseAll={handleCollapseAll}
-              onEditRoot={() => setSelectedNodeForHeirs(treeData)}
-            />
-
-            {/* Quick multi-generational & transaction explainer banner */}
-            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 p-4 rounded-2xl border border-emerald-200/60 flex items-start gap-3">
-              <div className="p-2 bg-emerald-600 text-white rounded-xl shrink-0 mt-0.5">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div className="text-xs text-slate-700 space-y-1">
-                <strong className="text-emerald-950 font-bold block text-sm">
-                  উত্তরাধিকার ও জমি ক্রয়-বিক্রয় নির্দেশিকা:
-                </strong>
-                <p>
-                  ১. <strong>‘+ ওয়ারিশ’</strong> বাটনে ক্লিক করে যেকোনো বংশধরের ওয়ারিশ যোগ করতে পারবেন (নিঃসন্তান ব্যক্তির ক্ষেত্রে ভাই-বোন ও আসাবাগণ স্বয়ংক্রিয়ভাবে তালিকাভুক্ত হবে)।
-                </p>
-                <p>
-                  ২. <strong>‘জমি ক্রয়-বিক্রয়’</strong> অপশনে ক্লিক করে যেকোনো ওয়ারিশের থেকে অন্য ওয়ারিশ জমি ক্রয় করলে বিক্রেতার জমি বাদ যাবে ও ক্রেতার জমিতে স্বয়ংক্রিয়ভাবে যোগ হবে।
-                </p>
-                <p>
-                  ৩. যেকোনো ওয়ারিশের কার্ডে <strong>‘তথ্য (i)’</strong> বাটনে ক্লিক করলে তার ব্যক্তিগত প্রাপ্তি ও ক্রয়-বিক্রয়ের পূর্ণাঙ্গ লেজার রিপোর্ট দেখতে পাবেন।
-                </p>
-              </div>
-            </div>
-          </div>
+          <InheritanceTreeView
+            rootNode={treeData}
+            decimalsPerKatha={decimalsPerKatha}
+            onSelectNodeForHeirs={(node) => setSelectedNodeForHeirs(node)}
+            onOpenMultiGenModal={() => setIsMultiGenOpen(true)}
+            onViewDetails={(node) => setSelectedNodeForDetails(node)}
+            onDeleteNode={handleDeleteNode}
+            onToggleCollapse={handleToggleCollapse}
+            onExpandAll={handleExpandAll}
+            onCollapseAll={handleCollapseAll}
+            onEditRoot={() => setSelectedNodeForHeirs(treeData)}
+            onOpenTransaction={handleOpenTransactionForPerson}
+            onOpenReport={() => setIsReportOpen(true)}
+          />
         ) : (
           <TableView
             rootNode={treeData}
@@ -337,6 +320,7 @@ export default function App() {
             onViewDetails={(node) => setSelectedNodeForDetails(node)}
             onOpenTransactions={() => {
               setTransactionDefaultPersonId(undefined);
+              setTransactionDefaultRole(undefined);
               setIsTransactionModalOpen(true);
             }}
           />
@@ -392,6 +376,7 @@ export default function App() {
           onAddTransaction={handleAddTransaction}
           onDeleteTransaction={handleDeleteTransaction}
           defaultPersonId={transactionDefaultPersonId}
+          defaultRole={transactionDefaultRole}
         />
       )}
 

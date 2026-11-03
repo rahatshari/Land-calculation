@@ -49,84 +49,56 @@ export const RootOwnerCard: React.FC<RootOwnerCardProps> = ({
   const hasChildren = rootNode.children && rootNode.children.length > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Big Hero Brand / Welcome Banner with Large Logo (ঢোকার সময় সুন্দর বড় লোগো) */}
-      <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-3xl p-4 sm:p-6 shadow-xl border border-emerald-700/50 flex flex-col md:flex-row items-center justify-between gap-5">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-5">
-          <div className="relative shrink-0">
-            <img
-              src="./icon.svg"
-              alt="উত্তরাধিকার ও জমির হিসাব লোগো"
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl shadow-2xl border-2 border-amber-400/80 p-0.5 bg-emerald-950/40 hover:scale-105 transition-transform"
-            />
-            <span className="absolute -bottom-2 -right-2 bg-amber-500 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow">
-              PWA READY
-            </span>
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
+      {/* Top Header Row: Title and Quick Action Buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
+            <UserCheck className="w-5 h-5" />
           </div>
-          <div className="space-y-1 max-w-xl">
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                উত্তরাধিকার ও জমির হিসাব বৃক্ষ
-              </h2>
-              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                বাংলাদেশ ফারায়েজ আইন ১৯৬১
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed">
-              পবিত্র কুরআনের বিধান ও বাংলাদেশ মুসলিম পারিবারিক আইন অধ্যাদেশ ১৯৬১ অনুযায়ী বংশপরম্পরায় একাধিক প্রজন্মের জমির হিস্যা বণ্টন, অভ্যন্তরীণ ক্রয়-বিক্রয় ও পূর্ণাঙ্গ খতিয়ান রিপোর্ট।
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+              মূল ভূম্যধিকারীর বিবরণ ও বণ্টনযোগ্য সম্পত্তি
+            </h3>
+            <p className="text-xs text-slate-500">
+              ১ কাঠা = {toBengaliNumber(decimalsPerKatha, 2)} শতক • ১ম মালিক: {currentName}
             </p>
           </div>
         </div>
 
-        {/* Quick Action Badges */}
-        <div className="flex flex-wrap sm:flex-col items-center sm:items-end gap-2 shrink-0">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
           {onOpenTransactions && (
             <button
               onClick={onOpenTransactions}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-emerald-950 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-emerald-950 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              title="ওয়ারিশদের মাঝে জমি ক্রয়-বিক্রয় ও হস্তান্তর"
             >
               <ArrowRightLeft className="w-4 h-4" />
-              <span>জমি ক্রয়-বিক্রয় / হস্তান্তর</span>
+              <span>জমি ক্রয়-বিক্রয়</span>
             </button>
           )}
+
           {onOpenMultiGenModal && (
             <button
               onClick={onOpenMultiGenModal}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-1.5 transition-all cursor-pointer"
+              title="এক সাথে একাধিক প্রজন্মের ওয়ারিশ বণ্টন"
             >
-              <Layers className="w-4 h-4 text-emerald-300" />
-              <span>একাধিক প্রজন্ম বিল্ডার</span>
+              <Layers className="w-4 h-4 text-emerald-700" />
+              <span className="hidden sm:inline">একাধিক প্রজন্ম</span>
             </button>
           )}
-        </div>
-      </div>
-
-      {/* Main Root Owner Property Card */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
-        {/* Top row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">
-                মূল ভূম্যধিকারীর বিবরণ ও বণ্টনযোগ্য সম্পত্তি
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                এখান থেকে জমি বাড়ালে বা কমালে সমগ্র বংশবৃক্ষের সকল ওয়ারিশের জমি স্বয়ংক্রিয়ভাবে পুনর্গণনা হবে
-              </p>
-            </div>
-          </div>
 
           <button
             onClick={onOpenHeirModal}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer ml-auto"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <Users className="w-4 h-4" />
             <span>{hasChildren ? '১ম প্রজন্মের ওয়ারিশ পরিবর্তন' : '+ ১ম প্রজন্মের ওয়ারিশ বণ্টন'}</span>
           </button>
         </div>
+      </div>
 
         {/* Inputs Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -257,6 +229,5 @@ export const RootOwnerCard: React.FC<RootOwnerCardProps> = ({
           </div>
         </div>
       </div>
-    </div>
   );
 };

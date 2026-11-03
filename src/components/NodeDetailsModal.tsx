@@ -8,7 +8,7 @@ interface NodeDetailsModalProps {
   onClose: () => void;
   onAddHeirs: (node: HeirTreeNode) => void;
   transactions?: LandTransaction[];
-  onOpenTransactionForPerson?: (personId: string) => void;
+  onOpenTransactionForPerson?: (personId: string, role?: 'seller' | 'buyer') => void;
   decimalsPerKatha?: number;
   kathaPerBigha?: number;
 }
@@ -42,7 +42,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4 max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-teal-800 p-6 text-white flex items-center justify-between shrink-0">
@@ -144,17 +144,30 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({
                 <span>ব্যক্তিগত জমি ক্রয়-বিক্রয়ের রিপোর্ট ({toBengaliNumber(myTransactions.length, 0)} টি)</span>
               </h4>
               {onOpenTransactionForPerson && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenTransactionForPerson(node.id);
-                  }}
-                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold shadow-xs flex items-center gap-1 cursor-pointer transition"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>জমি ক্রয়/বিক্রয় করুন</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenTransactionForPerson(node.id, 'seller');
+                    }}
+                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold shadow-xs flex items-center gap-1 cursor-pointer transition"
+                    title="এই ওয়ারিশের জমি অন্য কারো কাছে বিক্রয় / হস্তান্তর করুন"
+                  >
+                    <span>- জমি বিক্রয়</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenTransactionForPerson(node.id, 'buyer');
+                    }}
+                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold shadow-xs flex items-center gap-1 cursor-pointer transition"
+                    title="অন্য কারো জমি এই ওয়ারিশের নামে ক্রয় করুন"
+                  >
+                    <span>+ জমি ক্রয়</span>
+                  </button>
+                </div>
               )}
             </div>
 

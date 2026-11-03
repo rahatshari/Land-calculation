@@ -12,8 +12,10 @@ import {
   GitBranch,
   Edit2,
   Layers,
-  Sparkles,
-  Smartphone
+  ArrowRightLeft,
+  ShoppingBag,
+  FileText,
+  X
 } from 'lucide-react';
 import { HeirTreeNode } from '../types';
 import { toBengaliNumber } from '../utils/faraizCalculator';
@@ -29,6 +31,8 @@ interface InheritanceTreeViewProps {
   onExpandAll: () => void;
   onCollapseAll: () => void;
   onEditRoot?: () => void;
+  onOpenTransaction?: (personId?: string, role?: 'seller' | 'buyer') => void;
+  onOpenReport?: () => void;
 }
 
 interface LayoutNode {
@@ -51,6 +55,8 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
   onExpandAll,
   onCollapseAll,
   onEditRoot,
+  onOpenTransaction,
+  onOpenReport,
 }) => {
   const treeWrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,12 +66,15 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [actionMenuNode, setActionMenuNode] = useState<HeirTreeNode | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isInteracting, setIsInteracting] = useState(false);
 
   // Mobile Touch Refs
   const touchOriginRef = useRef<{ x: number; y: number } | null>(null);
   const pinchDistRef = useRef<number | null>(null);
   const pinchInitialZoomRef = useRef<number>(1);
+  const pinchWorldMidRef = useRef<{ x: number; y: number } | null>(null);
 
   const NODE_WIDTH = 250;
   const NODE_HEIGHT = 105;
@@ -159,15 +168,15 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
     // Zoom fits comfortably based on screen size
     const isMobile = clientWidth < 640;
     const fitZoom = Math.min(
-      isMobile ? 0.9 : 1.0,
-      Math.max(0.35, Math.min((clientWidth - (isMobile ? 20 : 60)) / treeW, (clientHeight - (isMobile ? 50 : 80)) / treeH))
+      isMobile ? 0.85 : 1.0,
+      Math.max(0.35, Math.min((clientWidth - (isMobile ? 24 : 60)) / treeW, (clientHeight - (isMobile ? 50 : 80)) / treeH))
     );
 
-    const targetX = isMobile ? 15 : 45;
+    const targetX = (clientWidth - (maxX - minX) * fitZoom) / 2 - minX * fitZoom;
     const targetY = (clientHeight - (maxY - minY) * fitZoom) / 2 - minY * fitZoom;
 
     setZoom(fitZoom);
-    setPan({ x: targetX, y: Math.max(20, targetY) });
+    setPan({ x: Math.max(16, targetX), y: Math.max(20, targetY) });
   }, [allNodes.length, totalBounds]);
 
   // Center tree whenever layout changes
@@ -197,10 +206,8 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
     setIsFullscreen(nextState);
 
     if (nextState) {
-      if (treeWrapperRef.current?.requestFullscreen) {
-        treeWrapperRef.current.requestFullscreen().catch(() => {
-          // Graceful fallback to CSS fullscreen overlay
-        });
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
       }
     } else {
       if (document.fullscreenElement && document.exitFullscreen) {
@@ -239,16 +246,89 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
     });
   };
 
-  const handleMouseUp = () => setIsDragging(false);
-
-  // Wheel zoom
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-    setZoom((prev) => Math.min(2.5, Math.max(0.35, prev * zoomFactor)));
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setIsInteracting(false);
   };
 
-  // Mobile Touch Pan and Pinch-to-Zoom handling
+  // Natural zoom in at viewport center
+  const handleZoomIn = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const focalX = rect.width / 2;
+    const focalY = rect.height / 2;
+
+    setZoom((prevZoom) => {
+      const newZoom = Math.min(2.5, prevZoom * 1.25);
+      if (Math.abs(newZoom - prevZoom) < 0.001) return prevZoom;
+
+      setPan((prevPan) => {
+        const worldX = (focalX - prevPan.x) / prevZoom;
+        const worldY = (focalY - prevPan.y) / prevZoom;
+        return {
+          x: focalX - worldX * newZoom,
+          y: focalY - worldY * newZoom,
+        };
+      });
+
+      return newZoom;
+    });
+  };
+
+  // Natural zoom out at viewport center
+  const handleZoomOut = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const focalX = rect.width / 2;
+    const focalY = rect.height / 2;
+
+    setZoom((prevZoom) => {
+      const newZoom = Math.max(0.25, prevZoom / 1.25);
+      if (Math.abs(newZoom - prevZoom) < 0.001) return prevZoom;
+
+      setPan((prevPan) => {
+        const worldX = (focalX - prevPan.x) / prevZoom;
+        const worldY = (focalY - prevPan.y) / prevZoom;
+        return {
+          x: focalX - worldX * newZoom,
+          y: focalY - worldY * newZoom,
+        };
+      });
+
+      return newZoom;
+    });
+  };
+
+  // Wheel zoom anchored at mouse cursor position
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const focalX = e.clientX - rect.left;
+    const focalY = e.clientY - rect.top;
+
+    // Smooth natural wheel zoom step
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+
+    setZoom((prevZoom) => {
+      const newZoom = Math.min(2.5, Math.max(0.25, prevZoom * zoomFactor));
+      if (Math.abs(newZoom - prevZoom) < 0.001) return prevZoom;
+
+      setPan((prevPan) => {
+        const worldX = (focalX - prevPan.x) / prevZoom;
+        const worldY = (focalY - prevPan.y) / prevZoom;
+        return {
+          x: focalX - worldX * newZoom,
+          y: focalY - worldY * newZoom,
+        };
+      });
+
+      return newZoom;
+    });
+  };
+
+  // Mobile Touch Pan and Pinch-to-Zoom handling (anchored at pinch midpoint)
   const handleTouchStart = (e: React.TouchEvent) => {
     if ((e.target as HTMLElement).closest('.interactive-btn')) return;
 
@@ -259,17 +339,29 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
         y: e.touches[0].clientY - pan.y,
       };
       pinchDistRef.current = null;
+      pinchWorldMidRef.current = null;
       setIsDragging(true);
-    } else if (e.touches.length === 2) {
+      setIsInteracting(true);
+    } else if (e.touches.length === 2 && containerRef.current) {
       // 2-finger pinch zoom start
-      touchOriginRef.current = null;
-      setIsDragging(false);
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
       pinchDistRef.current = dist;
       pinchInitialZoomRef.current = zoom;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const midX = (t0.clientX + t1.clientX) / 2 - rect.left;
+      const midY = (t0.clientY + t1.clientY) / 2 - rect.top;
+
+      pinchWorldMidRef.current = {
+        x: (midX - pan.x) / zoom,
+        y: (midY - pan.y) / zoom,
+      };
+
+      touchOriginRef.current = null;
+      setIsDragging(false);
+      setIsInteracting(true);
     }
   };
 
@@ -282,15 +374,28 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
         x: e.touches[0].clientX - touchOriginRef.current.x,
         y: e.touches[0].clientY - touchOriginRef.current.y,
       });
-    } else if (e.touches.length === 2 && pinchDistRef.current !== null) {
-      // Smooth 2-finger pinch zoom
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+    } else if (
+      e.touches.length === 2 &&
+      pinchDistRef.current !== null &&
+      pinchWorldMidRef.current &&
+      containerRef.current
+    ) {
+      // Natural 2-finger pinch zoom anchored at finger midpoint
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const currentDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
       const scaleFactor = currentDist / pinchDistRef.current;
-      const newZoom = Math.min(2.5, Math.max(0.35, pinchInitialZoomRef.current * scaleFactor));
+      const newZoom = Math.min(2.5, Math.max(0.25, pinchInitialZoomRef.current * scaleFactor));
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const currentMidX = (t0.clientX + t1.clientX) / 2 - rect.left;
+      const currentMidY = (t0.clientY + t1.clientY) / 2 - rect.top;
+
       setZoom(newZoom);
+      setPan({
+        x: currentMidX - pinchWorldMidRef.current.x * newZoom,
+        y: currentMidY - pinchWorldMidRef.current.y * newZoom,
+      });
     }
   };
 
@@ -298,15 +403,19 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
     if (e.touches.length === 0) {
       touchOriginRef.current = null;
       pinchDistRef.current = null;
+      pinchWorldMidRef.current = null;
       setIsDragging(false);
+      setIsInteracting(false);
     } else if (e.touches.length === 1) {
-      // Switched from pinch to 1-finger pan
+      // Seamlessly switch from pinch to 1-finger pan without position jumping
       touchOriginRef.current = {
         x: e.touches[0].clientX - pan.x,
         y: e.touches[0].clientY - pan.y,
       };
       pinchDistRef.current = null;
+      pinchWorldMidRef.current = null;
       setIsDragging(true);
+      setIsInteracting(true);
     }
   };
 
@@ -317,13 +426,13 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
       ref={treeWrapperRef}
       className={
         isFullscreen
-          ? 'fixed inset-0 z-50 w-screen h-screen bg-slate-950 flex flex-col select-none overflow-hidden touch-none'
+          ? 'fixed inset-0 z-40 w-screen h-screen bg-slate-950 flex flex-col select-none overflow-hidden touch-none'
           : 'relative w-full h-[580px] sm:h-[680px] lg:h-[720px] bg-slate-900 rounded-2xl border border-slate-700 overflow-hidden shadow-xl select-none flex flex-col touch-none'
       }
     >
       {/* FULLSCREEN TOP BAR (when Fullscreen is active) */}
       {isFullscreen && (
-        <div className="bg-slate-900/95 backdrop-blur-md px-3 sm:px-6 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 z-30 shadow-lg text-white">
+        <div className="bg-slate-900/95 backdrop-blur-md px-3 sm:px-6 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 z-30 shadow-lg text-white">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
               <GitBranch className="w-4 h-4 text-white" />
@@ -331,60 +440,95 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="text-xs sm:text-sm font-black truncate">
-                  {rootNode.name}-এর বংশবৃক্ষ বণ্টন
+                  {rootNode.name}-এর বংশবৃক্ষ
                 </h3>
                 <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  পূর্ণ স্ক্রিন ভিউ
+                  ফুল স্ক্রিন
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 truncate">
-                মোট সম্পত্তি: <strong className="text-emerald-400">{toBengaliNumber(rootNode.totalEstate, 2)} শতক</strong> • মোট ওয়ারিশ: <strong className="text-white">{toBengaliNumber(allNodes.length - 1, 0)} জন</strong>
+                মোট জমি: <strong className="text-emerald-400">{toBengaliNumber(rootNode.totalEstate, 2)} শতক</strong> • মোট ওয়ারিশ: <strong className="text-white">{toBengaliNumber(allNodes.length - 1, 0)} জন</strong>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
-            <button
-              onClick={onOpenMultiGenModal}
-              className="interactive-btn px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
-              title="এক সাথে একাধিক প্রজন্ম বিল্ডার"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">একাধিক প্রজন্ম</span>
-            </button>
-
-            {hasAnyChildren && (
-              <div className="hidden sm:flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700">
-                <button
-                  onClick={onExpandAll}
-                  className="interactive-btn px-2 py-1 text-[11px] text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors cursor-pointer"
-                >
-                  সব শাখা (+)
-                </button>
-                <button
-                  onClick={onCollapseAll}
-                  className="interactive-btn px-2 py-1 text-[11px] text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors cursor-pointer"
-                >
-                  সংকুচিত (-)
-                </button>
-              </div>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 ml-auto">
+            {/* Land Transaction Button inside Fullscreen */}
+            {onOpenTransaction && (
+              <button
+                onClick={() => onOpenTransaction()}
+                className="interactive-btn px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg text-xs font-black transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                title="ওয়ারিশদের মাঝে জমি ক্রয়-বিক্রয় ও হস্তান্তর"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>জমি ক্রয়-বিক্রয়</span>
+              </button>
             )}
 
+            {/* Report Button inside Fullscreen */}
+            {onOpenReport && (
+              <button
+                onClick={onOpenReport}
+                className="interactive-btn px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold border border-slate-700 transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                title="পূর্ণাঙ্গ খতিয়ান রিপোর্ট"
+              >
+                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden xs:inline">রিপোর্ট</span>
+              </button>
+            )}
+
+            {/* Add 1st Gen Heirs */}
             <button
-              onClick={autoFit}
-              className="interactive-btn p-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg border border-slate-700 transition-colors cursor-pointer"
-              title="কেন্দ্রে আনুন"
+              onClick={() => onSelectNodeForHeirs(rootNode)}
+              className="interactive-btn px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+              title="১ম প্রজন্মের ওয়ারিশ বণ্টন"
             >
-              <Focus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">১ম প্রজন্ম</span>
             </button>
+
+            {/* Multi-Gen */}
+            <button
+              onClick={onOpenMultiGenModal}
+              className="interactive-btn px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold border border-slate-700 transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+              title="এক সাথে একাধিক প্রজন্ম বিল্ডার"
+            >
+              <Layers className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">একাধিক প্রজন্ম</span>
+            </button>
+
+            {/* Zoom / View helpers */}
+            <div className="flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+              <button
+                onClick={handleZoomIn}
+                className="interactive-btn p-1 text-slate-300 hover:text-white rounded cursor-pointer"
+                title="জুম ইন (+)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleZoomOut}
+                className="interactive-btn p-1 text-slate-300 hover:text-white rounded cursor-pointer"
+                title="জুম আউট (-)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={autoFit}
+                className="interactive-btn p-1 text-emerald-400 hover:text-emerald-300 rounded cursor-pointer"
+                title="কেন্দ্রে আনুন"
+              >
+                <Focus className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
             {/* Exit Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
-              className="interactive-btn px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-black transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              className="interactive-btn px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
               title="ফুল স্ক্রিন বন্ধ করুন (Esc)"
             >
-              <Minimize2 className="w-4 h-4" />
+              <Minimize2 className="w-3.5 h-3.5" />
               <span>ফুল স্ক্রিন বন্ধ</span>
             </button>
           </div>
@@ -409,7 +553,7 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
           {/* Right Action buttons */}
           <div className="pointer-events-auto flex items-center gap-1 bg-slate-800/90 backdrop-blur-md p-1 sm:p-1.5 rounded-xl border border-slate-700 shadow-md text-slate-200">
             <button
-              onClick={() => setZoom((z) => Math.min(2.5, z + 0.15))}
+              onClick={handleZoomIn}
               className="p-1 sm:p-1.5 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
               title="জুম ইন (Zoom In)"
               aria-label="জুম ইন"
@@ -417,7 +561,7 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
               <ZoomIn className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setZoom((z) => Math.max(0.35, z - 0.15))}
+              onClick={handleZoomOut}
               className="p-1 sm:p-1.5 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
               title="জুম আউট (Zoom Out)"
               aria-label="জুম আউট"
@@ -481,7 +625,7 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
       {/* MOBILE & DESKTOP THUMB FLOATING CONTROLS (BOTTOM-RIGHT) */}
       <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1 bg-slate-800/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700 shadow-xl text-white">
         <button
-          onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
+          onClick={handleZoomIn}
           className="interactive-btn w-9 h-9 rounded-xl bg-slate-700/80 hover:bg-slate-600 active:scale-95 flex items-center justify-center transition-all cursor-pointer text-sm font-black"
           title="জুম ইন (+)"
           aria-label="জুম ইন"
@@ -489,7 +633,7 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
-          onClick={() => setZoom((z) => Math.max(0.35, z - 0.2))}
+          onClick={handleZoomOut}
           className="interactive-btn w-9 h-9 rounded-xl bg-slate-700/80 hover:bg-slate-600 active:scale-95 flex items-center justify-center transition-all cursor-pointer text-sm font-black"
           title="জুম আউট (-)"
           aria-label="জুম আউট"
@@ -520,16 +664,6 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
         </button>
       </div>
 
-      {/* Helper guide badge (Adapted for touch on mobile & mouse on desktop) */}
-      <div className="absolute bottom-3 left-3 z-20 pointer-events-none text-[10px] sm:text-[11px] text-slate-300 bg-slate-800/85 backdrop-blur-sm px-2.5 py-1.5 rounded-xl border border-slate-700 max-w-[200px] sm:max-w-none">
-        <span className="inline-block sm:hidden">
-          👆 <strong>মোবাইল টিপস:</strong> আঙুল দিয়ে টানুন • ২ আঙুলে জুম • ⛶ ফুল স্ক্রিন
-        </span>
-        <span className="hidden sm:inline-block">
-          🖱️ <strong>টিপস:</strong> মাউস দিয়ে টেনে সরান • স্ক্রোল করে জুম করুন • <strong>‘+ ওয়ারিশ’</strong> বাটনে ক্লিক করে পরবর্তী প্রজন্মের অংশ ভাগ করুন
-        </span>
-      </div>
-
       {/* Main Canvas Area */}
       <div
         ref={containerRef}
@@ -547,7 +681,7 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: '0 0',
-            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+            transition: (isDragging || isInteracting) ? 'none' : 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
           }}
           className="relative min-w-max min-h-max"
         >
@@ -636,8 +770,11 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
                     width: `${width}px`,
                     minHeight: `${height}px`,
                   }}
-                  onClick={() => setSelectedNodeId(node.id)}
-                  className={`group rounded-xl p-3 border transition-all duration-150 backdrop-blur-md shadow-xl select-none ${
+                  onClick={() => {
+                    setSelectedNodeId(node.id);
+                    setActionMenuNode(node);
+                  }}
+                  className={`group rounded-xl p-3 border transition-all duration-150 backdrop-blur-md shadow-xl select-none cursor-pointer hover:scale-[1.02] ${
                     isRoot
                       ? 'bg-gradient-to-r from-emerald-950 to-teal-950 border-emerald-400 shadow-emerald-950/60 ring-1 ring-emerald-400/40'
                       : node.gender === 'male'
@@ -697,14 +834,28 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Actions: Info, Add Heir, Delete */}
+                    {/* Actions: Transaction, Info, Add Heir, Delete */}
                     <div className="flex items-center gap-1 shrink-0 interactive-btn">
+                      {onOpenTransaction && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenTransaction(node.id, 'seller');
+                          }}
+                          title="জমি ক্রয়-বিক্রয় / হস্তান্তর"
+                          className="p-1 rounded bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 transition-colors cursor-pointer"
+                          aria-label={`জমি ক্রয়-বিক্রয় ${node.name}`}
+                        >
+                          <ArrowRightLeft className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onViewDetails(node);
                         }}
-                        title="হিস্যা ও আইনি ব্যাখ্যা দেখুন"
+                        title="হিস্যা ও খতিয়ান রিপোর্ট দেখুন"
                         className="p-1 rounded hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
                         aria-label={`বিস্তারিত তথ্য ${node.name}`}
                       >
@@ -833,6 +984,189 @@ export const InheritanceTreeView: React.FC<InheritanceTreeViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Interactive Heir Quick-Actions Modal (Opens when user clicks any person in the Tree or in Fullscreen) */}
+      {actionMenuNode && (
+        <div 
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 overflow-y-auto"
+          onClick={() => setActionMenuNode(null)}
+        >
+          <div 
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-900 to-teal-900 p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold border border-white/20">
+                  {actionMenuNode.relationship === 'root' ? '👑' : actionMenuNode.gender === 'male' ? '👨' : '👩'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-base">{actionMenuNode.name}</h3>
+                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-semibold">
+                      {actionMenuNode.relationshipBn}
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-200">
+                    প্রজন্ম {toBengaliNumber(actionMenuNode.generation, 0)} • ওয়ারিশের জমি ও হিসাব ব্যবস্থা
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActionMenuNode(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-white cursor-pointer"
+                aria-label="বন্ধ করুন"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Current Land Summary */}
+            <div className="p-4 bg-emerald-50/70 border-b border-emerald-100 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-slate-500 font-bold block">বর্তমান সর্বমোট নিট জমি:</span>
+                <span className="text-xl font-black text-emerald-950">
+                  {toBengaliNumber(actionMenuNode.currentTotalLand !== undefined ? actionMenuNode.currentTotalLand : actionMenuNode.totalEstate, 2)} শতক
+                </span>
+                <span className="text-xs text-slate-500 font-semibold ml-1">
+                  ({toBengaliNumber((actionMenuNode.currentTotalLand !== undefined ? actionMenuNode.currentTotalLand : actionMenuNode.totalEstate) / (decimalsPerKatha || 3.30), 2)} কাঠা)
+                </span>
+              </div>
+              <div className="text-right text-xs">
+                <div className="text-slate-600">প্রাপ্ত: <strong>{toBengaliNumber(actionMenuNode.inheritedEstate || 0, 1)}</strong> শতক</div>
+                {((actionMenuNode.landBought || 0) > 0 || (actionMenuNode.landSold || 0) > 0) && (
+                  <div className="text-[11px] mt-0.5 space-x-1">
+                    {(actionMenuNode.landBought || 0) > 0 && (
+                      <span className="text-emerald-700 font-bold">+{toBengaliNumber(actionMenuNode.landBought, 1)} ক্রয়</span>
+                    )}
+                    {(actionMenuNode.landSold || 0) > 0 && (
+                      <span className="text-rose-700 font-bold">-{toBengaliNumber(actionMenuNode.landSold, 1)} বিক্রয়</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-4 space-y-2.5">
+              {/* Option 1: Give/sell land to someone else */}
+              <button
+                type="button"
+                onClick={() => {
+                  const node = actionMenuNode;
+                  setActionMenuNode(null);
+                  if (onOpenTransaction) {
+                    onOpenTransaction(node.id, 'seller');
+                  }
+                }}
+                className="w-full p-3 rounded-xl bg-amber-50 hover:bg-amber-100/90 border border-amber-300 flex items-center gap-3 text-left transition-all cursor-pointer group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <ArrowRightLeft className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                    এই ওয়ারিশের জমি অন্য কাউকে দিন (বিক্রয় / হস্তান্তর)
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {actionMenuNode.name}-এর জমি কমবে এবং নির্বাচিত ক্রেতার জমিতে যোগ হবে
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Record land bought from someone else */}
+              <button
+                type="button"
+                onClick={() => {
+                  const node = actionMenuNode;
+                  setActionMenuNode(null);
+                  if (onOpenTransaction) {
+                    onOpenTransaction(node.id, 'buyer');
+                  }
+                }}
+                className="w-full p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-300 flex items-center gap-3 text-left transition-all cursor-pointer group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                    অন্য কারো জমি এই ওয়ারিশ ক্রয় করেছে (ক্রয় যোগ)
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    অন্য ওয়ারিশের কাছ থেকে জমি কিনে {actionMenuNode.name}-এর সম্পত্তিতে যোগ হবে
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 3: View Full Ledger & Details */}
+              <button
+                type="button"
+                onClick={() => {
+                  const node = actionMenuNode;
+                  setActionMenuNode(null);
+                  onViewDetails(node);
+                }}
+                className="w-full p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center gap-3 text-left transition-all cursor-pointer group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-slate-700 text-white flex items-center justify-center font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                    বিস্তারিত খতিয়ান ও ক্রয়-বিক্রয়ের রিপোর্ট
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    মূল প্রাপ্তি, ক্রয় ও বিক্রয়ের দলিলের সম্পূর্ণ তালিকা ও হিসাব
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 4: Add next gen heirs */}
+              <button
+                type="button"
+                onClick={() => {
+                  const node = actionMenuNode;
+                  setActionMenuNode(null);
+                  onSelectNodeForHeirs(node);
+                }}
+                className="w-full p-3 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 flex items-center gap-3 text-left transition-all cursor-pointer group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                    {actionMenuNode.relationship === 'root' ? '১ম প্রজন্মের ওয়ারিশ বণ্টন' : 'পরবর্তী প্রজন্মের ওয়ারিশ বণ্টন যোগ করুন'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    স্ত্রী, ছেলে, মেয়ে ইত্যাদি ওয়ারিশ নির্বাচন করে হিস্যা বণ্টন
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 5: Delete if not root */}
+              {actionMenuNode.relationship !== 'root' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const node = actionMenuNode;
+                    setActionMenuNode(null);
+                    if (window.confirm(`আপনি কি "${node.name}" কে মুছে ফেলতে চান?`)) {
+                      onDeleteNode(node.id);
+                    }
+                  }}
+                  className="w-full p-2.5 rounded-xl hover:bg-rose-50 text-rose-600 border border-transparent hover:border-rose-200 flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer mt-1"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>এই ওয়ারিশকে মুছে ফেলুন</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
